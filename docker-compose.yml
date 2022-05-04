@@ -1,0 +1,22 @@
+version: "3.6"
+services:
+  app:
+    build: "./app"
+    ports:
+      - "8090"
+    restart: "on-failure"
+    depends_on:
+      - "redis"
+  web:
+    build: "./web"
+    ports:
+      - "80:80"
+      - "84:84"
+    depends_on:
+      - "app"
+    restart: "on-failure"
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379"
+    restart: "on-failure"

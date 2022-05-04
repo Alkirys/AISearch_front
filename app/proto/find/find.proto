@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package find;
+
+import "google/api/annotations.proto";
+
+// Defines the import path that should be used to import the generated package
+// and the package name
+option go_package = "github.com/Elderly-AI/findface/proto/find;find";
+
+// Here is the overall greeting service definition where we define all our endpoints
+service Find {
+  rpc FindHandler(FindHandlerRequest) returns (FindHandlerResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/find"
+      body: "*"
+    };
+  }
+
+  rpc DetectHandler(DetectHandlerRequest) returns (DetectHandlerResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/detect"
+      body: "*"
+    };
+  }
+}
+
+message FindHandlerRequest {
+  string img = 1;
+};
+
+message FindHandlerResponse {
+  message image {
+    string name = 1;
+    repeated uint64 bound = 2;
+  };
+  repeated image imgs = 1;
+};
+
+message DetectHandlerRequest {
+  message image {
+    string name = 1;
+    repeated uint64 bound = 2;
+  };
+  image img = 1;
+}
+
+message DetectHandlerResponse {
+  repeated string users = 1;
+}

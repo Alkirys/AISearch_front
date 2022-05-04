@@ -1,0 +1,181 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "proto/find/find.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Find"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v1/detect": {
+      "post": {
+        "operationId": "Find_DetectHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/findDetectHandlerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/findDetectHandlerRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Find"
+        ]
+      }
+    },
+    "/api/v1/find": {
+      "post": {
+        "operationId": "Find_FindHandler",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/findFindHandlerResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/findFindHandlerRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Find"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "findDetectHandlerRequest": {
+      "type": "object",
+      "properties": {
+        "img": {
+          "$ref": "#/definitions/findDetectHandlerRequestimage"
+        }
+      }
+    },
+    "findDetectHandlerRequestimage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "bound": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "findDetectHandlerResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "findFindHandlerRequest": {
+      "type": "object",
+      "properties": {
+        "img": {
+          "type": "string"
+        }
+      }
+    },
+    "findFindHandlerResponse": {
+      "type": "object",
+      "properties": {
+        "imgs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/findFindHandlerResponseimage"
+          }
+        }
+      }
+    },
+    "findFindHandlerResponseimage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "bound": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uint64"
+          }
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

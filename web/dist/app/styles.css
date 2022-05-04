@@ -1,0 +1,209 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow-x: hidden;
+    font-family: 'Inter', sans-serif;
+}
+
+.background {
+    background: linear-gradient(45deg, #E500A4, #6A00F4) 50% 50%;
+    background-size: 150% 200%;
+    /*animation-name: gradient;*/
+    /*animation-duration: 8s;*/
+    /*animation-iteration-count: infinite;*/
+    /*animation-timing-function: ease-out;*/
+}
+
+@keyframes gradient {
+    25% {
+        background-position: 100% 50%;
+        animation-timing-function: ease-in;
+    }
+
+    50% {
+        background-position: 50% 50%;
+        animation-timing-function: ease-out;
+    }
+
+    75% {
+        background-position: 0% 50%;
+        animation-timing-function: ease-in;
+    }
+}
+
+.mainContainer {
+    display: grid;
+    grid-auto-rows: 60px 1fr 170px;
+    grid-template-areas: 'header'
+                         'main'
+                         'list';
+    align-items: center;
+    grid-gap: 30px;
+    height: 100%;
+}
+
+.photoContainer {
+    grid-gap: 60px;
+    width: 100%;
+    height: 100%;
+    grid-area: main;
+    display: flex;
+    justify-self: center;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    left: 50%;
+    transform: translate(calc(-50% + 205px), 0px); /* 205 - это (350 + 60) / 2, т.е. (ширина инпута + grid-gap) / 2 */
+}
+
+.input__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 40px;
+    background-color: white;
+    color: #6A00F4;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 24px;
+}
+
+.input__icon {
+    cursor: pointer;
+}
+
+.input__inputElement {
+    position: absolute;
+    visibility: hidden;
+    opacity: 0;
+}
+
+.input__label {
+    display: flex;
+    grid-gap: 20px;
+    height: 45px;
+}
+
+.input__description {
+    font-size: 24px;
+    font-weight: 300;
+    font-style: italic;
+    color: white;
+    width: 350px;
+}
+
+.canvas {
+    position: relative;
+    left: 100px;
+}
+
+.header {
+    grid-area: header;
+    display: flex;
+    justify-content: space-between;
+    height: 60px;
+    padding: 0 40px;
+}
+
+.header__buttonGroup {
+    display: flex;
+    grid-gap: 50px;
+    align-items: end;
+}
+
+.header__button {
+    color: white;
+    font-style: italic;
+    margin: 0;
+    height: fit-content;
+    cursor: pointer;
+}
+
+.header__iconGroup {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    grid-gap: 10px;
+    cursor: pointer;
+}
+
+.header__button--passive {
+    font-size: 32px;
+    padding-bottom: 4px;
+    font-weight: 200;
+}
+
+.header__button--active {
+    font-size: 40px;
+    border-bottom: 2px solid white;
+    font-weight: 400;
+}
+
+.photo__canvas {
+    border-radius: 20px;
+}
+
+.list {
+    grid-area: list;
+    margin: 0 80px 40px;
+    padding: 0;
+    overflow-x: auto;
+    display: inline-block;
+    height: 130px;
+    align-self: start;
+}
+
+.list__container {
+    display: inline-flex;
+}
+
+.list__elem {
+    width: calc(25vw - 80px);
+    height: 100px;
+    background-color: rgba(255, 255, 255, .1);
+    border-radius: 20px;
+    padding: 5px;
+    list-style-type: none;
+    margin-right: 40px;
+    display: grid;
+    grid-template-columns: min-content 1fr;
+    align-items: center;
+    justify-items: center;
+}
+
+.list__elem:last-child {
+    margin-right: 0;
+}
+
+.list__avatar {
+    height: 100%;
+    border-radius: 20px;
+}
+
+.list__name {
+    width: min-content;
+    font-size: 24px;
+    font-style: italic;
+    font-weight: 300;
+    color: white;
+    margin: 0;
+    text-align: center;
+}
+
+.notFaceFound {
+    grid-area: list;
+    margin: 0 80px 60px;
+    padding: 0;
+    display: flex;
+    height: 110px;
+    align-self: start;
+    justify-self: center;
+}
+
+.notFaceFound__message {
+    font-size: 24px;
+    font-weight: 300;
+    font-style: italic;
+    color: white;
+}
