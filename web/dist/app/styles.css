@@ -144,7 +144,7 @@ html, body {
     border-radius: 20px;
 }
 
-.list {
+.listWrapper {
     grid-area: list;
     margin: 0 80px 40px;
     padding: 0;
@@ -152,6 +152,11 @@ html, body {
     display: inline-block;
     height: 130px;
     align-self: start;
+}
+
+.list {
+    padding: 0;
+    margin: 0;
 }
 
 .list__container {

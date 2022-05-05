@@ -116,3 +116,4 @@ fabric.properties
 .idea/*
 .idea
 web/dist/app/config.json
+config.json
