@@ -6,6 +6,7 @@
 
 const USER_IDS_EVENT = 'SET_USER_IDS';
 const LIST_LOADING_STATE_CHANGE = 'LIST_LOADING';
+const NO_FACES = 'NO_FACES';
 
 class EventBus {
     constructor() {
@@ -51,7 +52,6 @@ class App {
             || document.body.clientHeight;
 
         const containerMaxHeight = windowHeight - 290; // тут чисто хардкод под стили для css-класса mainContainer
-        console.log(windowHeight, containerMaxHeight)
         return containerMaxHeight;
     }
 
@@ -69,8 +69,6 @@ class App {
 
         this.header.render();
         this.photoContainer.render();
-        // TODO mock
-        this.usersList.setUsersList([{avatarUrl: 'kek', name: 'Александр Аверкиев'}, {avatarUrl: 'kek', name: 'kek'}, {avatarUrl: 'kek', name: 'kek'}, {avatarUrl: 'kek', name: 'kek'}, {avatarUrl: 'kek', name: 'kek'}, {avatarUrl: 'kek', name: 'kek'}, {avatarUrl: 'kek', name: 'kek'}, {avatarUrl: 'kek', name: 'kek'}]);
         this.usersList.render();
     }
 }
@@ -85,42 +83,59 @@ class UsersList {
         this.place = place;
     }
 
-    vkGetUsersLog(result) {
+    vkGetUsersCallback(usersData) {
+        this.usersList = usersData.response.map((userData) => {
+            return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
+        });
         eventBus.emit(LIST_LOADING_STATE_CHANGE);
-        console.log('kek class', result);
         const script = document.getElementById('vkApiScript');
-        script.outerHTML = '';
-    }
-
-    setUsersList(usersList) {
-        this.usersList = usersList;
+        if (script) {
+            script.outerHTML = '';
+        }
     }
 
     render() {
         // TODO порефакторить условия
-        if (this.isLoading) {
+        if (!this.usersList && !this.isLoading) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
-                    <p class="notFaceFound__message">Загрузка...</p>
+                    <p class="notFaceFound__message">Загрузите фото...</p>
                 </div>
             `;
+            this._addListeners();
+            this._subscribeEvents();
             return;
         }
 
-        if (Array(this.usersList).length === 0 && !this.isLoading) {
+        if (this.isLoading) {
+            this.place.innerHTML = `
+                <div id="notFaceFound" class="notFaceFound">
+                    <div class="spinner">
+                        <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                    </div>
+                </div>
+            `;
+            this._addListeners();
+            return;
+        }
+
+        if (!this.usersList && this.usersList.length === 0 && !this.isLoading) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
                     <p class="notFaceFound__message">Не удалось разобрать лицо на фото :(</p>
                 </div>
             `;
+            this._addListeners();
             return;
         }
 
         const usersHtml = this.usersList.reduce((htmlStr, userData) => {
             return htmlStr + `
-                <li id="listElem" class="list__elem">
-                    <img src="${userData.avatarUrl}" class="list__avatar" alt="avatar"/>
-                    <p class="list__name">${userData.name}</p>
+                <li class="list__elem">
+                    <a href="https://vk.com/id${userData.id}" target="_blank" class="list__link">
+                        <img src="${userData.avatarUrl}" class="list__avatar" alt="avatar"/>
+                        <p class="list__name">${userData.name}</p>
+                    </a>
                 </li>
             `;
         }, '');
@@ -134,7 +149,6 @@ class UsersList {
         `;
 
         this._addListeners();
-        this._subscribeEvents();
     }
 
     _rerenderLoading = () => {
@@ -152,17 +166,19 @@ class UsersList {
     _subscribeEvents() {
         eventBus.on(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.on(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
+        eventBus.on(NO_FACES, this.vkGetUsersCallback);
     }
 
     _unsubscribeEvents() {
         eventBus.off(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.off(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
+        eventBus.off(NO_FACES, this.vkGetUsersCallback);
     }
 
     _fetchVKInfo = (data) => {
         const script = document.createElement('script');
         script.id = 'vkApiScript';
-        script.src = `https://api.vk.com/method/users.get?user_ids=${data}&fields=photo_100&access_token=${VK_access_token}&v=5.131&callback=app.usersList.vkGetUsersLog`;
+        script.src = `https://api.vk.com/method/users.get?user_ids=${data}&fields=photo_100&access_token=${VK_access_token}&v=5.131&callback=app.usersList.vkGetUsersCallback`;
         document.getElementsByTagName("head")[0].appendChild(script);
     }
 
@@ -355,6 +371,7 @@ class Photo {
             return;
         }
         if (this.facesData.length === 0) {
+            eventBus.emit(NO_FACES, {response: []});
             console.log('no facesFound');
             return;
         }
@@ -438,33 +455,3 @@ class PhotoPlaceholder {
 
 const app = new App();
 app.render();
-
-
-
-// base_image = new Image();
-// base_image.src = './ai_test.jpeg';
-// base_image.onload = function(){
-//     // canvas.height = base_image.height
-//     // canvas.width = base_image.width
-//     canvas.height = 500
-//     canvas.width = 650
-//     context.drawImage(base_image, 0, 0, 650, 500);
-//
-//     let b64Text = canvas.toDataURL('image/jpeg');
-//     b64Text = b64Text.replace('data:image/jpeg;base64,','');
-//     console.log(b64Text)
-//
-//     fetch('http://127.0.0.1/api/v1/find', {
-//         // HTTP request type
-//         method: "POST",
-//         // Sending our blob with our request
-//         body: JSON.stringify({img: b64Text})
-//     }).then((data) => {console.log(data)})
-// }
-
-// fetch('http://127.0.0.1/api/v1/find', {
-//     // HTTP request type
-//     method: "POST",
-//     // Sending our blob with our request
-//     body: `{"image":"�PNG\\r\\n\u001a\\n\u0000\u0000\u0000"}`
-// }).then((data) => {console.log(data)})
