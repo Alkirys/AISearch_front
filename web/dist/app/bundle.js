@@ -4,9 +4,10 @@
 // let canvas = document.querySelector('canvas');
 // let context = canvas.getContext('2d');
 
-const USER_IDS_EVENT = 'SET_USER_IDS';
-const LIST_LOADING_STATE_CHANGE = 'LIST_LOADING';
+const USER_IDS_EVENT = 'USER_IDS_EVENT';
+const LIST_LOADING_STATE_CHANGE = 'LIST_LOADING_STATE_CHANGE';
 const NO_FACES = 'NO_FACES';
+const FETCH_ERROR = 'FETCH_ERROR';
 
 class EventBus {
     constructor() {
@@ -77,6 +78,7 @@ class UsersList {
     constructor() {
         this.place = '';
         this.isLoading = false;
+        this.error = false;
     }
 
     setPlace(place) {
@@ -84,10 +86,14 @@ class UsersList {
     }
 
     vkGetUsersCallback(usersData) {
-        this.usersList = usersData.response.map((userData) => {
-            return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
-        });
-        eventBus.emit(LIST_LOADING_STATE_CHANGE);
+        if (!usersData.response) {
+            eventBus.emit(FETCH_ERROR);
+        } else {
+            this.usersList = usersData.response.map((userData) => {
+                return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
+            });
+            eventBus.emit(LIST_LOADING_STATE_CHANGE);
+        }
         const script = document.getElementById('vkApiScript');
         if (script) {
             script.outerHTML = '';
@@ -96,7 +102,7 @@ class UsersList {
 
     render() {
         // TODO порефакторить условия
-        if (!this.usersList && !this.isLoading) {
+        if (!this.usersList && !this.isLoading && !this.error) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
                     <p class="notFaceFound__message">Загрузите фото...</p>
@@ -104,6 +110,16 @@ class UsersList {
             `;
             this._addListeners();
             this._subscribeEvents();
+            return;
+        }
+
+        if (this.error) {
+            this.place.innerHTML = `
+                <div id="notFaceFound" class="notFaceFound">
+                    <p class="notFaceFound__message">Кажется, что-то пошло не так... Попробуйте еще раз</p>
+                </div>
+            `;
+            this._addListeners();
             return;
         }
 
@@ -152,7 +168,15 @@ class UsersList {
     }
 
     _rerenderLoading = () => {
+        this.error = false;
         this.isLoading = !this.isLoading;
+        this._removeListeners();
+        this.render();
+    }
+
+    _rerenderError = () => {
+        this.error = true;
+        this.isLoading = false;
         this._removeListeners();
         this.render();
     }
@@ -167,12 +191,14 @@ class UsersList {
         eventBus.on(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.on(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
         eventBus.on(NO_FACES, this.vkGetUsersCallback);
+        eventBus.on(FETCH_ERROR, this._rerenderError);
     }
 
     _unsubscribeEvents() {
         eventBus.off(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.off(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
         eventBus.off(NO_FACES, this.vkGetUsersCallback);
+        eventBus.off(FETCH_ERROR, this._rerenderError);
     }
 
     _fetchVKInfo = (data) => {
@@ -364,7 +390,7 @@ class Photo {
                 this.facesData = data.imgs;
                 this.detectFacesRequest();
             });
-        })
+        }).catch(() => eventBus.emit(FETCH_ERROR));
     }
 
     detectFacesRequest() {
@@ -385,7 +411,7 @@ class Photo {
                 this.userIds = this.validateUserUrls(data.users);
                 eventBus.emit(USER_IDS_EVENT, this.userIds);
             });
-        })
+        }).catch(() => eventBus.emit(FETCH_ERROR));
     }
 
     validateUserUrls(users) {
