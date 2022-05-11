@@ -1,9 +1,6 @@
 // - Рабинович, какими вы видите перспективы этого проекта?
 // - Таки судя по значительной части его разработчиков - весьма радужными...
 
-// let canvas = document.querySelector('canvas');
-// let context = canvas.getContext('2d');
-
 const USER_IDS_EVENT = 'USER_IDS_EVENT';
 const LIST_LOADING_STATE_CHANGE = 'LIST_LOADING_STATE_CHANGE';
 const NO_FACES = 'NO_FACES';
@@ -30,34 +27,61 @@ class EventBus {
     }
 }
 
-const eventBus = new EventBus();
-let VK_access_token = '';
-
-fetch("config.json").then((res) => {
-    return res.json().then((config) => {
-        VK_access_token = config.VK_access_token;
-    });
-});
-
-class App {
+class AbstractComponent {
     constructor() {
-        this.place = document.getElementById('mainContainer');
+        this.place = '';
+    }
+
+    _addListeners() {
+    }
+
+    _removeListeners() {
+    }
+
+    _subscribeEvents(){
+    }
+
+    _unsubscribeEvents(){
+    }
+
+    setPlace(place) {
+        this.place = place;
+    }
+
+    _getWindowHeight() {
+        return window.innerHeight
+            || document.documentElement.clientHeight
+            || document.body.clientHeight;
+    }
+
+    render() {
+        this._addListeners();
+        this._subscribeEvents();
+    }
+
+    hide() {
+        this._removeListeners();
+        this._unsubscribeEvents();
+    }
+}
+
+class App extends AbstractComponent{
+    constructor() {
+        super();
         this.header = new Header();
         this.photoContainer = new PhotoContainer();
         this.usersList = new UsersList();
     }
 
-    getContainerMaxHeight() {
-        const windowHeight = window.innerHeight
-            || document.documentElement.clientHeight
-            || document.body.clientHeight;
+    _getContainerMaxHeight() {
+        const windowHeight = this._getWindowHeight();
 
         const containerMaxHeight = windowHeight - 290; // тут чисто хардкод под стили для css-класса mainContainer
         return containerMaxHeight;
     }
 
     render() {
-        const photoMaxHeight = this.getContainerMaxHeight();
+        const photoMaxHeight = this._getContainerMaxHeight();
         this.place.innerHTML = `
             <header id="header" class="header"></header>
             <div id="photoContainer" class="photoContainer" style="height: ${photoMaxHeight}px"></div>
@@ -72,17 +96,21 @@ class App {
         this.photoContainer.render();
         this.usersList.render();
     }
+
+    hide() {
+        this.header.hide();
+        this.photoContainer.hide();
+        this.usersList.hide();
+        this.place.innerHTML = '';
+    }
 }
 
-class UsersList {
+class UsersList extends AbstractComponent {
     constructor() {
+        super();
         this.place = '';
         this.isLoading = false;
         this.error = false;
-    }
-
-    setPlace(place) {
-        this.place = place;
     }
 
     vkGetUsersCallback(usersData) {
@@ -101,7 +129,6 @@ class UsersList {
     }
 
     render() {
-        // TODO порефакторить условия
         if (!this.usersList && !this.isLoading && !this.error) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
@@ -135,7 +162,7 @@ class UsersList {
             return;
         }
 
-        if (!this.usersList && this.usersList.length === 0 && !this.isLoading) {
+        if (this.usersList.length === 0 && !this.isLoading) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
                     <p class="notFaceFound__message">Не удалось разобрать лицо на фото :(</p>
@@ -181,12 +208,6 @@ class UsersList {
         this.render();
     }
 
-    _addListeners() {
-    }
-
-    _removeListeners() {
-    }
-
     _subscribeEvents() {
         eventBus.on(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.on(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
@@ -215,13 +236,9 @@ class UsersList {
     }
 }
 
-class Header {
+class Header extends AbstractComponent {
     constructor() {
-        this.place = '';
-    }
-
-    setPlace(place) {
-        this.place = place;
+        super();
     }
 
     render() {
@@ -246,19 +263,15 @@ class Header {
     }
 }
 
-class PhotoContainer {
+class PhotoContainer extends AbstractComponent {
     constructor() {
-        this.place = '';
+        super();
         this.photoPlaceholder = new PhotoPlaceholder();
         this.fileInput = new FileInput();
     }
 
-    setPlace(place) {
-        this.place = place;
-    }
-
     render() {
-        const photoMaxWidth = this.getContainerMaxHeight(); // считаем, что фото - квадрат, тогда макс ширина равна макс длинне
+        const photoMaxWidth = this._getContainerMaxHeight(); // считаем, что фото - квадрат, тогда макс ширина равна макс длинне
         this.place.innerHTML = `
                 <div id="photo" class="photo" style="width: ${photoMaxWidth}px"></div>
                 <div id="input" class="input"></div>
@@ -269,11 +282,8 @@ class PhotoContainer {
         this.fileInput.render();
     }
 
-    // TODO метод часто повторяется
-    getContainerMaxHeight() {
-        const windowHeight = window.innerHeight
-            || document.documentElement.clientHeight
-            || document.body.clientHeight;
+    _getContainerMaxHeight() {
+        const windowHeight = this._getWindowHeight();
 
         const containerMaxHeight = windowHeight - 290; // тут чисто хардкод под стили для css-класса mainContainer
         return containerMaxHeight;
@@ -284,15 +294,11 @@ class PhotoContainer {
     }
 }
 
-class FileInput {
+class FileInput extends AbstractComponent {
     constructor() {
-        this.place = '';
+        super();
         this.fileInput = '';
         this.photo = new Photo();
-    }
-
-    setPlace(place) {
-        this.place = place;
     }
 
     _fileInputChangeHandler = (evt) => {
@@ -325,24 +331,28 @@ class FileInput {
             <p class="input__description">Чтобы увидеть список пользователей, загрузите фото...</p>
         `;
 
+        this._addListeners();
+    }
+
+    _addListeners() {
         this.fileInput = document.getElementById('inputFile');
         this.fileInput.addEventListener('change', this._fileInputChangeHandler);
     }
 
-    hide() {
+    _removeListeners() {
         this.fileInput.removeEventListener('change', this._fileInputChangeHandler);
+    }
+
+    hide() {
+        this._removeListeners();
         this.place.innerHTML = '';
     }
 }
 
-class Photo {
+class Photo extends AbstractComponent {
     constructor() {
-        this.place = '';
+        super();
         this.facesData = [];
-    }
-
-    setPlace(place) {
-        this.place = place;
     }
 
     setFileData(fileName, base64) {
@@ -365,7 +375,7 @@ class Photo {
         const image = new Image();
         image.src = this.base64;
         image.onload = () => {
-            const imgSize = this.getImageSize(image.width, image.height);
+            const imgSize = this._getImageSize(image.width, image.height);
             this.canvas.height = imgSize.height;
             this.canvas.width = imgSize.width;
             context.drawImage(image,0, 0, imgSize.width, imgSize.height);
@@ -396,6 +406,7 @@ class Photo {
     detectFacesRequest() {
         if (!this.facesData) {
             console.log('no find request');
+            eventBus.emit(FETCH_ERROR);
             return;
         }
         if (this.facesData.length === 0) {
@@ -408,13 +419,13 @@ class Photo {
             body: JSON.stringify({img: this.facesData[0]}) // TODO пока для одного лица
         }).then((res) => {
             res.json().then((data) => {
-                this.userIds = this.validateUserUrls(data.users);
+                this.userIds = this._validateUserUrls(data.users);
                 eventBus.emit(USER_IDS_EVENT, this.userIds);
             });
         }).catch(() => eventBus.emit(FETCH_ERROR));
     }
 
-    validateUserUrls(users) {
+    _validateUserUrls(users) {
         const idsArray = users.map((userUrl) => {
             return userUrl.split('id')[1];
         });
@@ -422,10 +433,8 @@ class Photo {
         return idsStr.slice(0, idsStr.length - 1);
     }
 
-    getImageSize(imageWidth, imageHeight) {
-        const windowHeight = window.innerHeight
-            || document.documentElement.clientHeight
-            || document.body.clientHeight;
+    _getImageSize(imageWidth, imageHeight) {
+        const windowHeight = this._getWindowHeight();
 
         const imageMaxHeight = windowHeight - 290; // тут чисто хардкод под стили для css-класса mainContainer
         const imageAspectRatio = imageWidth / imageHeight;
@@ -447,18 +456,14 @@ class Photo {
     }
 }
 
-class PhotoPlaceholder {
+class PhotoPlaceholder extends AbstractComponent {
     constructor() {
-        this.place = '';
-    }
-
-    setPlace(place) {
-        this.place = place;
+        super();
     }
 
     render() {
         const svgSize = {width: 527, height: 519}; // это примерные размеры картинки в svg без масштабирования
-        const svgMaxWidth = this.getSvgMaxHeight();
+        const svgMaxWidth = this._getSvgMaxHeight();
         const svgMaxHeight = svgMaxWidth * svgSize.height / svgSize.width;
         this.place.innerHTML = `
             <svg class="photo__placeholder" width="${svgMaxWidth}" height="${svgMaxHeight}" viewBox="75 5 550 540" fill="" fill-opacity="0.15" stroke="white">
@@ -467,10 +472,8 @@ class PhotoPlaceholder {
         `;
     }
 
-    getSvgMaxHeight() {
-        const windowHeight = window.innerHeight
-            || document.documentElement.clientHeight
-            || document.body.clientHeight;
+    _getSvgMaxHeight() {
+        const windowHeight = this._getWindowHeight();
 
         const imageMaxHeight = windowHeight - 290; // тут чисто хардкод под стили для css-класса mainContainer
         return imageMaxHeight;
@@ -481,5 +484,16 @@ class PhotoPlaceholder {
     }
 }
 
+
+const eventBus = new EventBus();
+let VK_access_token = '';
+
+fetch("config.json").then((res) => {
+    return res.json().then((config) => {
+        VK_access_token = config.VK_access_token;
+    }).catch(() => console.log('no config file'));
+});
+
 const app = new App();
+app.setPlace(document.getElementById('mainContainer'));
 app.render();
