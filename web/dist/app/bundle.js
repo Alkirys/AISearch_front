@@ -96,7 +96,7 @@ class App {
     }
 
     _renderPage = (pageName) => {
-        if (pageName !== MAIN_PAGE && pageName !== ABOUT_PAGE) {
+        if ((pageName !== MAIN_PAGE && pageName !== ABOUT_PAGE) || this.selectedPage === pageName) {
             return;
         }
         this.hide();
