@@ -1,12 +1,16 @@
 // - Рабинович, какими вы видите перспективы этого проекта?
 // - Таки судя по значительной части его разработчиков - весьма радужными...
 
+const PAGE_CHANGE_EVENT = 'PAGE_CHANGE_EVENT';
 const USER_IDS_EVENT = 'USER_IDS_EVENT';
-const LIST_LOADING_STATE_CHANGE = 'LIST_LOADING_STATE_CHANGE';
-const NO_FACES = 'NO_FACES';
-const SOME_ERROR = 'SOME_ERROR';
-const FACES_FOUND = 'FACES_FOUND';
-const PHOTO_CHANGE ='PHOTO_CHANGE';
+const LIST_LOADING_STATE_CHANGE_EVENT = 'LIST_LOADING_STATE_CHANGE_EVENT';
+const NO_FACES_EVENT = 'NO_FACES_EVENT';
+const SOME_ERROR_EVENT = 'SOME_ERROR_EVENT';
+const FACES_FOUND_EVENT = 'FACES_FOUND_EVENT';
+const PHOTO_CHANGE_EVENT ='PHOTO_CHANGE_EVENT';
+
+const MAIN_PAGE = 'main';
+const ABOUT_PAGE = 'about';
 
 class EventBus {
     constructor() {
@@ -67,10 +71,66 @@ class AbstractComponent {
     }
 }
 
-class App extends AbstractComponent{
+class App {
+    constructor() {
+        this.place = document.getElementById('mainContainer');
+        this.header = new Header();
+        this.mainPage = new MainPage();
+        this.aboutPage = new AboutPage();
+        this.selectedPage = MAIN_PAGE;
+        this.contentElement = '';
+        eventBus.on(PAGE_CHANGE_EVENT, this._renderPage);
+    }
+
+    _renderPage = (pageName) => {
+        console.log('_renderPage', pageName)
+        if (pageName !== MAIN_PAGE && pageName !== ABOUT_PAGE) {
+            console.log('fuck...')
+            return;
+        }
+        this.hide();
+        this.selectedPage = pageName;
+        this.render();
+    }
+
+    render() {
+        this.place.innerHTML = `
+                <header id="header" class="header"></header>
+                <div id="content" class="content"></div>
+            `;
+
+        this.header.setPlace(document.getElementById('header'));
+        this.header.setCurrentPage(this.selectedPage);
+        this.header.render();
+
+        this.contentElement = document.getElementById('content');
+
+        if (this.selectedPage === MAIN_PAGE) {
+            this.mainPage.setPlace(this.contentElement);
+            this.contentElement.className = 'content mainPageContent';
+            this.mainPage.render();
+        } else {
+            this.aboutPage.setPlace(this.contentElement);
+            this.contentElement.className = 'content aboutPageContent';
+            this.aboutPage.render();
+        }
+    }
+
+    hide() {
+        this.header.hide();
+        if (this.selectedPage === MAIN_PAGE) {
+            this.mainPage.hide();
+        } else {
+            this.aboutPage.hide();
+        }
+        this.place.innerHTML = '';
+    }
+
+}
+
+class MainPage extends AbstractComponent{
     constructor() {
         super();
-        this.header = new Header();
         this.photoContainer = new PhotoContainer();
         this.usersList = new UsersList();
     }
@@ -85,24 +145,45 @@ class App extends AbstractComponent{
     render() {
         const photoMaxHeight = this._getContainerMaxHeight();
         this.place.innerHTML = `
-            <header id="header" class="header"></header>
             <div id="photoContainer" class="photoContainer" style="height: ${photoMaxHeight}px"></div>
             <div class="listWrapper" id="listWrapper"></div>
         `;
 
-        this.header.setPlace(document.getElementById('header'));
         this.photoContainer.setPlace(document.getElementById('photoContainer'));
         this.usersList.setPlace(document.getElementById('listWrapper'));
 
-        this.header.render();
         this.photoContainer.render();
         this.usersList.render();
     }
 
     hide() {
-        this.header.hide();
         this.photoContainer.hide();
         this.usersList.hide();
+        this.place.innerHTML = '';
+    }
+}
+
+class AboutPage extends AbstractComponent {
+    constructor() {
+        super();
+    }
+
+    render() {
+        this.place.innerHTML = `
+            <p class="aboutPageContent__description aboutPageContent__description--general">
+                AISearch - поиск людей по фото в социальной сети "ВКонтакте"
+            </p>
+            <p class="aboutPageContent__description aboutPageContent__description--develop">
+                Frontend: @Alkirys
+            </p>
+            <p class="aboutPageContent__description aboutPageContent__description--develop">
+                Backend: использован backend сайта 
+                <a class="aboutPageContent__link" href="https://search4faces.com/" target="_blank">search4faces.com</a>
+            </p>
+        `;
+    }
+
+    hide() {
         this.place.innerHTML = '';
     }
 }
@@ -117,12 +198,12 @@ class UsersList extends AbstractComponent {
 
     vkGetUsersCallback(usersData) {
         if (!usersData.response || !this) { // тк это коллбэк для запроса в вк он может сработать и без экхемпляра класса
-            eventBus.emit(SOME_ERROR);
+            eventBus.emit(SOME_ERROR_EVENT);
         } else {
             this.usersList = usersData.response.map((userData) => {
                 return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
             });
-            eventBus.emit(LIST_LOADING_STATE_CHANGE);
+            eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
         }
         const script = document.getElementById('vkApiScript');
         if (script) {
@@ -212,22 +293,22 @@ class UsersList extends AbstractComponent {
 
     _subscribeEvents() {
         eventBus.on(USER_IDS_EVENT, this._fetchVKInfo);
-        eventBus.on(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
-        eventBus.on(NO_FACES, this.vkGetUsersCallback);
-        eventBus.on(SOME_ERROR, this._rerenderError);
+        eventBus.on(LIST_LOADING_STATE_CHANGE_EVENT, this._rerenderLoading);
+        eventBus.on(NO_FACES_EVENT, this.vkGetUsersCallback);
+        eventBus.on(SOME_ERROR_EVENT, this._rerenderError);
     }
 
     _unsubscribeEvents() {
         eventBus.off(USER_IDS_EVENT, this._fetchVKInfo);
-        eventBus.off(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
-        eventBus.off(NO_FACES, this.vkGetUsersCallback);
-        eventBus.off(SOME_ERROR, this._rerenderError);
+        eventBus.off(LIST_LOADING_STATE_CHANGE_EVENT, this._rerenderLoading);
+        eventBus.off(NO_FACES_EVENT, this.vkGetUsersCallback);
+        eventBus.off(SOME_ERROR_EVENT, this._rerenderError);
     }
 
     _fetchVKInfo = (data) => {
         const script = document.createElement('script');
         script.id = 'vkApiScript';
-        script.src = `https://api.vk.com/method/users.get?user_ids=${data}&fields=photo_100&access_token=${VK_access_token}&v=5.131&callback=app.usersList.vkGetUsersCallback`;
+        script.src = `https://api.vk.com/method/users.get?user_ids=${data}&fields=photo_100&access_token=${VK_access_token}&v=5.131&callback=app.mainPage.usersList.vkGetUsersCallback`;
         document.getElementsByTagName("head")[0].appendChild(script);
     }
 
@@ -241,16 +322,21 @@ class UsersList extends AbstractComponent {
 class Header extends AbstractComponent {
     constructor() {
         super();
+        this.currentPage = MAIN_PAGE;
+    }
+
+    setCurrentPage(pageName) {
+        this.currentPage = pageName;
     }
 
     render() {
         this.place.innerHTML = `
             <div class="header__buttonGroup">
-                <p id="mainButton" class="header__button header__activeButton">AISearch</p>
-                <p id="aboutButton" class="header__button header__passiveButton">about us</p>
+                <p id="mainButton" class="header__button header__mainButton ${this.currentPage === MAIN_PAGE ? 'header__mainButton--active' : 'header__animatedButton'}">AISearch</p>
+                <p id="aboutButton" class="header__button header__minorButton ${this.currentPage === ABOUT_PAGE ? 'header__minorButton--active' : 'header__animatedButton'}">about us</p>
             </div>
             <div class="header__buttonGroup">
-                <a class="header__iconGroup header__passiveButton" href="https://t.me/InternalServerAI" target="_blank">
+                <a class="header__iconGroup header__minorButton header__animatedButton" href="https://t.me/InternalServerAI" target="_blank">
                     <p id="contactButton" class="header__button">contact us</p>
                     <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
                         <path d="M28.4012 3.83123C28.0895 3.8449 27.7861 3.93166 27.5125 4.04123C27.2417 4.15007 25.6825 4.81556 23.38 5.79998C21.0775 6.7844 18.0844 8.06633 15.1175 9.33748C9.18357 11.8798 3.35249 14.3812 3.35249 14.3812L3.39499 14.365C3.39499 14.365 3.04305 14.4826 2.68624 14.7312C2.50783 14.8555 2.31589 15.016 2.15874 15.25C2.00158 15.4839 1.88669 15.8155 1.92999 16.1662C2.08206 17.3981 3.35874 17.7475 3.35874 17.7475L3.36374 17.75L9.06124 19.7C9.2065 20.1846 10.7893 25.4674 11.1375 26.5862C11.3298 27.2048 11.5098 27.5616 11.6975 27.805C11.7914 27.9268 11.8899 28.021 11.9987 28.09C12.042 28.1174 12.0875 28.1379 12.1325 28.1562C12.1334 28.1567 12.134 28.1558 12.135 28.1562C12.1405 28.1587 12.1457 28.1589 12.1512 28.1612L12.1362 28.1575C12.1467 28.1617 12.157 28.1688 12.1675 28.1725C12.1878 28.1796 12.2002 28.1794 12.2262 28.185C12.8787 28.4128 13.4187 27.99 13.4187 27.99L13.4412 27.9725L16.9412 24.7262L22.6212 29.155L22.6925 29.1875C23.6867 29.6289 24.5858 29.3826 25.0837 28.9775C25.5817 28.5723 25.7775 28.05 25.7775 28.05L25.7987 27.995L29.9725 6.24123C30.0793 5.75455 30.0945 5.33387 29.9937 4.95373C29.893 4.57359 29.6483 4.24314 29.3412 4.05998C29.0342 3.87682 28.7129 3.81755 28.4012 3.83123ZM28.435 5.13248C28.5616 5.12662 28.6554 5.14109 28.685 5.15873C28.7146 5.17637 28.7278 5.17405 28.7562 5.28123C28.7846 5.38841 28.8 5.61416 28.7225 5.96748L28.72 5.97498L24.57 27.6025C24.5602 27.6243 24.4737 27.8243 24.2762 27.985C24.0748 28.1489 23.8508 28.2768 23.2562 28.0275L17.045 23.1837L16.87 23.0462L16.8662 23.05L15.0087 21.6562L25.4475 9.37498C25.5277 9.28086 25.5789 9.16551 25.595 9.04289C25.611 8.92027 25.5912 8.79563 25.5379 8.68403C25.4846 8.57244 25.4002 8.47867 25.2947 8.41406C25.1893 8.34945 25.0674 8.31677 24.9437 8.31998C24.8229 8.32312 24.7055 8.36039 24.605 8.42748L9.49999 18.4975L3.79374 16.5437C3.79374 16.5437 3.22711 16.2284 3.19999 16.0087C3.19848 15.9966 3.19179 16.0076 3.22124 15.9637C3.25068 15.9199 3.32469 15.8459 3.41749 15.7812C3.60307 15.6519 3.81499 15.5737 3.81499 15.5737L3.83624 15.5662L3.85749 15.5575C3.85749 15.5575 9.68888 13.0559 15.6225 10.5137C18.5893 9.24264 21.5818 7.96166 23.8837 6.97748C26.1851 5.99355 27.8479 5.28533 27.9887 5.22873C28.149 5.16454 28.3084 5.13834 28.435 5.13248ZM21.5125 12.0275L13.5962 21.3412L13.5925 21.345C13.5801 21.3599 13.5684 21.3753 13.5575 21.3912C13.5449 21.4086 13.5332 21.4265 13.5225 21.445C13.478 21.5205 13.4495 21.6043 13.4387 21.6912C13.4387 21.6929 13.4387 21.6946 13.4387 21.6962L12.4075 26.3337C12.3903 26.2836 12.3783 26.2653 12.36 26.2062V26.205C12.0324 25.1525 10.5391 20.1703 10.3325 19.4812L21.5125 12.0275ZM14.49 22.8675L15.9125 23.935L13.8225 25.8725L14.49 22.8675Z" fill="white"/>
@@ -258,9 +344,34 @@ class Header extends AbstractComponent {
                 </a>
             </div>
         `;
+
+        this._addListeners();
+    }
+
+    _setMainPage = () => {
+        eventBus.emit(PAGE_CHANGE_EVENT, MAIN_PAGE);
+    }
+
+    _setAboutPage = () => {
+        eventBus.emit(PAGE_CHANGE_EVENT, ABOUT_PAGE);
+    }
+
+    _addListeners() {
+        this.mainButton = document.getElementById('mainButton');
+        this.mainButton.addEventListener('click', this._setMainPage);
+        this.aboutButton = document.getElementById('aboutButton');
+        this.aboutButton.addEventListener('click', this._setAboutPage);
+    }
+
+    _removeListeners() {
+        this.mainButton = this.mainButton && document.getElementById('mainButton');
+        this.mainButton.removeEventListener('click', this._setMainPage);
+        this.aboutButton = this.aboutButton && document.getElementById('aboutButton');
+        this.aboutButton.removeEventListener('click', this._setAboutPage);
     }
 
     hide() {
+        this._removeListeners();
         this.place.innerHTML = '';
     }
 }
@@ -304,7 +415,7 @@ class FileInput extends AbstractComponent {
     }
 
     _fileInputChangeHandler = (evt) => {
-        eventBus.emit(PHOTO_CHANGE);
+        eventBus.emit(PHOTO_CHANGE_EVENT);
         const file = evt.target.files[0];
         if (!file.type.match('image.*')) {
             alert('wrong file type');
@@ -388,7 +499,7 @@ class Photo extends AbstractComponent {
             this.canvas.height = imgSize.height;
             this.canvas.width = imgSize.width;
             context.drawImage(image,0, 0, imgSize.width, imgSize.height);
-            eventBus.emit(LIST_LOADING_STATE_CHANGE);
+            eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
             this.findFacesRequest();
         };
     }
@@ -410,7 +521,7 @@ class Photo extends AbstractComponent {
                 this.facesBound.detectFacesRequest();
 
             });
-        }).catch(() => eventBus.emit(SOME_ERROR));
+        }).catch(() => eventBus.emit(SOME_ERROR_EVENT));
     }
 
     _getImageSize(imageWidth, imageHeight) {
@@ -466,15 +577,15 @@ class FacesBound extends AbstractComponent {
     detectFacesRequest() {
         if (!this.faces) {
             console.log('no find request');
-            eventBus.emit(SOME_ERROR);
+            eventBus.emit(SOME_ERROR_EVENT);
             return;
         }
         if (this.faces.length === 0) {
-            eventBus.emit(NO_FACES, {response: []});
+            eventBus.emit(NO_FACES_EVENT, {response: []});
             console.log('no faces found');
             return;
         }
-        eventBus.emit(FACES_FOUND);
+        eventBus.emit(FACES_FOUND_EVENT);
         fetch('http://127.0.0.1/api/v1/detect', {
             method: "POST",
             body: JSON.stringify({img: this.faces[this.tmpFaceNumber]})
@@ -483,7 +594,7 @@ class FacesBound extends AbstractComponent {
                 this.userIds = this._validateUserUrls(data.users);
                 eventBus.emit(USER_IDS_EVENT, this.userIds);
             });
-        }).catch(() => eventBus.emit(SOME_ERROR));
+        }).catch(() => eventBus.emit(SOME_ERROR_EVENT));
     }
 
     _validateUserUrls(users) {
@@ -501,7 +612,7 @@ class FacesBound extends AbstractComponent {
         }
 
         const htmlStr = this.faces.reduce((resultHtml, faceData, idx) => {
-            const borderSize = idx === this.tmpFaceNumber && 3; // это по сути ширина border
+            const borderSize = idx === this.tmpFaceNumber && 2.5; // это по сути ширина border
             return resultHtml + `<div id="photoFace_${idx}" class="photo__face photo__face--${idx === this.tmpFaceNumber ? 'selected' : 'disabled'}" style="
                                      left: ${+faceData.bound[0] - borderSize}px; 
                                      top: ${+faceData.bound[2] - borderSize}px; 
@@ -564,17 +675,17 @@ class FacesBound extends AbstractComponent {
         const faceNumber = evt.currentTarget.id.split('_').pop();
         this.setFaceNumber(+faceNumber);
         this.detectFacesRequest();
-        eventBus.emit(LIST_LOADING_STATE_CHANGE);
+        eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
     }
 
     _subscribeEvents() {
-        eventBus.on(FACES_FOUND, this._rerender);
-        eventBus.on(PHOTO_CHANGE, this._hideBounds);
+        eventBus.on(FACES_FOUND_EVENT, this._rerender);
+        eventBus.on(PHOTO_CHANGE_EVENT, this._hideBounds);
     }
 
     _unsubscribeEvents() {
-        eventBus.off(FACES_FOUND, this._rerender);
-        eventBus.off(PHOTO_CHANGE, this._hideBounds);
+        eventBus.off(FACES_FOUND_EVENT, this._rerender);
+        eventBus.off(PHOTO_CHANGE_EVENT, this._hideBounds);
     }
 
     _addListeners() {
@@ -639,5 +750,4 @@ fetch("config.json").then((res) => {
 });
 
 const app = new App();
-app.setPlace(document.getElementById('mainContainer'));
 app.render();

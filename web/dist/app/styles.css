@@ -158,13 +158,61 @@ html, body {
 
 .mainContainer {
     display: grid;
-    grid-auto-rows: 60px 1fr 170px;
+    grid-auto-rows: 60px 1fr;
     grid-template-areas: 'header'
-                         'main'
-                         'list';
+                         'content';
     align-items: center;
     grid-gap: 30px;
     height: 100%;
+}
+
+.content {
+    display: grid;
+    align-items: center;
+    height: 100%;
+}
+
+.mainPageContent {
+    display: grid;
+    grid-auto-rows: 1fr 170px;
+    grid-template-areas: 'main'
+                         'list';
+    grid-gap: 30px;
+}
+
+.aboutPageContent {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.aboutPageContent__description {
+    color: white;
+    font-style: italic;
+    text-align: center;
+    width: 50%;
+    margin: 0;
+}
+
+.aboutPageContent__description--general {
+    font-weight: 400;
+    font-size: 32px;
+    padding-bottom: 200px;
+}
+
+.aboutPageContent__description--develop {
+    font-weight: 200;
+    font-size: 26px;
+    padding: 5px 0;
+}
+
+.aboutPageContent__link {
+    color: #FFC2E2;
+    transition: color .4s;
+}
+
+.aboutPageContent__link:hover {
+    color: #E4B363;
 }
 
 .photoContainer {
@@ -288,14 +336,22 @@ html, body {
     cursor: pointer;
 }
 
-.header__passiveButton {
+.header__minorButton {
     font-size: 32px;
-    padding-bottom: 4px;
     font-weight: 200;
     position: relative;
+    padding-bottom: 4px;
 }
 
-.header__passiveButton:after {
+.header__mainButton {
+    position: relative;
+    font-size: 40px;
+    font-weight: 400;
+    border-bottom: none;
+    padding-bottom: 2px;
+}
+
+.header__animatedButton:after {
     display: block;
     content: "";
     background-color: white;
@@ -309,14 +365,18 @@ html, body {
     margin-bottom: 1px;
 }
 
-.header__passiveButton:hover:after {
+.header__animatedButton:hover:after {
     width: 100%;
 }
 
-.header__activeButton {
-    font-size: 40px;
+.header__mainButton--active {
     border-bottom: 2px solid white;
-    font-weight: 400;
+    padding-bottom: 0;
+}
+
+.header__minorButton--active {
+    border-bottom: 2px solid white;
+    padding-bottom: 2px;
 }
 
 .photo {
@@ -334,7 +394,7 @@ html, body {
 
 .photo__face {
     position: absolute;
-    border-radius: 13px;
+    border-radius: 22.5px; /* хз, почему, но визуально 22.5 выглядят лучше, чем 20 */
     cursor: pointer;
 }
 
@@ -371,12 +431,12 @@ html, body {
 }
 
 .photo__face--disabled:hover {
-    opacity: 0.5;
+    opacity: 0.7;
 }
 
 .photo__faceCanvas {
     position: relative;
-    border-radius: 13px;
+    border-radius: 20px;
 }
 
 .listWrapper {
