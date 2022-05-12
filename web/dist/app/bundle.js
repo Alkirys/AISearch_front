@@ -4,7 +4,9 @@
 const USER_IDS_EVENT = 'USER_IDS_EVENT';
 const LIST_LOADING_STATE_CHANGE = 'LIST_LOADING_STATE_CHANGE';
 const NO_FACES = 'NO_FACES';
-const FETCH_ERROR = 'FETCH_ERROR';
+const SOME_ERROR = 'SOME_ERROR';
+const FACES_FOUND = 'FACES_FOUND';
+const PHOTO_CHANGE ='PHOTO_CHANGE';
 
 class EventBus {
     constructor() {
@@ -114,8 +116,8 @@ class UsersList extends AbstractComponent {
     }
 
     vkGetUsersCallback(usersData) {
-        if (!usersData.response) {
-            eventBus.emit(FETCH_ERROR);
+        if (!usersData.response || !this) { // тк это коллбэк для запроса в вк он может сработать и без экхемпляра класса
+            eventBus.emit(SOME_ERROR);
         } else {
             this.usersList = usersData.response.map((userData) => {
                 return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
@@ -212,14 +214,14 @@ class UsersList extends AbstractComponent {
         eventBus.on(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.on(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
         eventBus.on(NO_FACES, this.vkGetUsersCallback);
-        eventBus.on(FETCH_ERROR, this._rerenderError);
+        eventBus.on(SOME_ERROR, this._rerenderError);
     }
 
     _unsubscribeEvents() {
         eventBus.off(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.off(LIST_LOADING_STATE_CHANGE, this._rerenderLoading);
         eventBus.off(NO_FACES, this.vkGetUsersCallback);
-        eventBus.off(FETCH_ERROR, this._rerenderError);
+        eventBus.off(SOME_ERROR, this._rerenderError);
     }
 
     _fetchVKInfo = (data) => {
@@ -243,18 +245,18 @@ class Header extends AbstractComponent {
 
     render() {
         this.place.innerHTML = `
-                <div class="header__buttonGroup">
-                    <p id="mainButton" class="header__button header__activeButton">AISearch</p>
-                    <p id="aboutButton" class="header__button header__passiveButton">about us</p>
-                </div>
-                <div class="header__buttonGroup">
-                    <a class="header__iconGroup header__passiveButton" href="https://t.me/InternalServerAI" target="_blank">
-                        <p id="contactButton" class="header__button">contact us</p>
-                        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                            <path d="M28.4012 3.83123C28.0895 3.8449 27.7861 3.93166 27.5125 4.04123C27.2417 4.15007 25.6825 4.81556 23.38 5.79998C21.0775 6.7844 18.0844 8.06633 15.1175 9.33748C9.18357 11.8798 3.35249 14.3812 3.35249 14.3812L3.39499 14.365C3.39499 14.365 3.04305 14.4826 2.68624 14.7312C2.50783 14.8555 2.31589 15.016 2.15874 15.25C2.00158 15.4839 1.88669 15.8155 1.92999 16.1662C2.08206 17.3981 3.35874 17.7475 3.35874 17.7475L3.36374 17.75L9.06124 19.7C9.2065 20.1846 10.7893 25.4674 11.1375 26.5862C11.3298 27.2048 11.5098 27.5616 11.6975 27.805C11.7914 27.9268 11.8899 28.021 11.9987 28.09C12.042 28.1174 12.0875 28.1379 12.1325 28.1562C12.1334 28.1567 12.134 28.1558 12.135 28.1562C12.1405 28.1587 12.1457 28.1589 12.1512 28.1612L12.1362 28.1575C12.1467 28.1617 12.157 28.1688 12.1675 28.1725C12.1878 28.1796 12.2002 28.1794 12.2262 28.185C12.8787 28.4128 13.4187 27.99 13.4187 27.99L13.4412 27.9725L16.9412 24.7262L22.6212 29.155L22.6925 29.1875C23.6867 29.6289 24.5858 29.3826 25.0837 28.9775C25.5817 28.5723 25.7775 28.05 25.7775 28.05L25.7987 27.995L29.9725 6.24123C30.0793 5.75455 30.0945 5.33387 29.9937 4.95373C29.893 4.57359 29.6483 4.24314 29.3412 4.05998C29.0342 3.87682 28.7129 3.81755 28.4012 3.83123ZM28.435 5.13248C28.5616 5.12662 28.6554 5.14109 28.685 5.15873C28.7146 5.17637 28.7278 5.17405 28.7562 5.28123C28.7846 5.38841 28.8 5.61416 28.7225 5.96748L28.72 5.97498L24.57 27.6025C24.5602 27.6243 24.4737 27.8243 24.2762 27.985C24.0748 28.1489 23.8508 28.2768 23.2562 28.0275L17.045 23.1837L16.87 23.0462L16.8662 23.05L15.0087 21.6562L25.4475 9.37498C25.5277 9.28086 25.5789 9.16551 25.595 9.04289C25.611 8.92027 25.5912 8.79563 25.5379 8.68403C25.4846 8.57244 25.4002 8.47867 25.2947 8.41406C25.1893 8.34945 25.0674 8.31677 24.9437 8.31998C24.8229 8.32312 24.7055 8.36039 24.605 8.42748L9.49999 18.4975L3.79374 16.5437C3.79374 16.5437 3.22711 16.2284 3.19999 16.0087C3.19848 15.9966 3.19179 16.0076 3.22124 15.9637C3.25068 15.9199 3.32469 15.8459 3.41749 15.7812C3.60307 15.6519 3.81499 15.5737 3.81499 15.5737L3.83624 15.5662L3.85749 15.5575C3.85749 15.5575 9.68888 13.0559 15.6225 10.5137C18.5893 9.24264 21.5818 7.96166 23.8837 6.97748C26.1851 5.99355 27.8479 5.28533 27.9887 5.22873C28.149 5.16454 28.3084 5.13834 28.435 5.13248ZM21.5125 12.0275L13.5962 21.3412L13.5925 21.345C13.5801 21.3599 13.5684 21.3753 13.5575 21.3912C13.5449 21.4086 13.5332 21.4265 13.5225 21.445C13.478 21.5205 13.4495 21.6043 13.4387 21.6912C13.4387 21.6929 13.4387 21.6946 13.4387 21.6962L12.4075 26.3337C12.3903 26.2836 12.3783 26.2653 12.36 26.2062V26.205C12.0324 25.1525 10.5391 20.1703 10.3325 19.4812L21.5125 12.0275ZM14.49 22.8675L15.9125 23.935L13.8225 25.8725L14.49 22.8675Z" fill="white"/>
-                        </svg>
-                    </a>
-                </div>
+            <div class="header__buttonGroup">
+                <p id="mainButton" class="header__button header__activeButton">AISearch</p>
+                <p id="aboutButton" class="header__button header__passiveButton">about us</p>
+            </div>
+            <div class="header__buttonGroup">
+                <a class="header__iconGroup header__passiveButton" href="https://t.me/InternalServerAI" target="_blank">
+                    <p id="contactButton" class="header__button">contact us</p>
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <path d="M28.4012 3.83123C28.0895 3.8449 27.7861 3.93166 27.5125 4.04123C27.2417 4.15007 25.6825 4.81556 23.38 5.79998C21.0775 6.7844 18.0844 8.06633 15.1175 9.33748C9.18357 11.8798 3.35249 14.3812 3.35249 14.3812L3.39499 14.365C3.39499 14.365 3.04305 14.4826 2.68624 14.7312C2.50783 14.8555 2.31589 15.016 2.15874 15.25C2.00158 15.4839 1.88669 15.8155 1.92999 16.1662C2.08206 17.3981 3.35874 17.7475 3.35874 17.7475L3.36374 17.75L9.06124 19.7C9.2065 20.1846 10.7893 25.4674 11.1375 26.5862C11.3298 27.2048 11.5098 27.5616 11.6975 27.805C11.7914 27.9268 11.8899 28.021 11.9987 28.09C12.042 28.1174 12.0875 28.1379 12.1325 28.1562C12.1334 28.1567 12.134 28.1558 12.135 28.1562C12.1405 28.1587 12.1457 28.1589 12.1512 28.1612L12.1362 28.1575C12.1467 28.1617 12.157 28.1688 12.1675 28.1725C12.1878 28.1796 12.2002 28.1794 12.2262 28.185C12.8787 28.4128 13.4187 27.99 13.4187 27.99L13.4412 27.9725L16.9412 24.7262L22.6212 29.155L22.6925 29.1875C23.6867 29.6289 24.5858 29.3826 25.0837 28.9775C25.5817 28.5723 25.7775 28.05 25.7775 28.05L25.7987 27.995L29.9725 6.24123C30.0793 5.75455 30.0945 5.33387 29.9937 4.95373C29.893 4.57359 29.6483 4.24314 29.3412 4.05998C29.0342 3.87682 28.7129 3.81755 28.4012 3.83123ZM28.435 5.13248C28.5616 5.12662 28.6554 5.14109 28.685 5.15873C28.7146 5.17637 28.7278 5.17405 28.7562 5.28123C28.7846 5.38841 28.8 5.61416 28.7225 5.96748L28.72 5.97498L24.57 27.6025C24.5602 27.6243 24.4737 27.8243 24.2762 27.985C24.0748 28.1489 23.8508 28.2768 23.2562 28.0275L17.045 23.1837L16.87 23.0462L16.8662 23.05L15.0087 21.6562L25.4475 9.37498C25.5277 9.28086 25.5789 9.16551 25.595 9.04289C25.611 8.92027 25.5912 8.79563 25.5379 8.68403C25.4846 8.57244 25.4002 8.47867 25.2947 8.41406C25.1893 8.34945 25.0674 8.31677 24.9437 8.31998C24.8229 8.32312 24.7055 8.36039 24.605 8.42748L9.49999 18.4975L3.79374 16.5437C3.79374 16.5437 3.22711 16.2284 3.19999 16.0087C3.19848 15.9966 3.19179 16.0076 3.22124 15.9637C3.25068 15.9199 3.32469 15.8459 3.41749 15.7812C3.60307 15.6519 3.81499 15.5737 3.81499 15.5737L3.83624 15.5662L3.85749 15.5575C3.85749 15.5575 9.68888 13.0559 15.6225 10.5137C18.5893 9.24264 21.5818 7.96166 23.8837 6.97748C26.1851 5.99355 27.8479 5.28533 27.9887 5.22873C28.149 5.16454 28.3084 5.13834 28.435 5.13248ZM21.5125 12.0275L13.5962 21.3412L13.5925 21.345C13.5801 21.3599 13.5684 21.3753 13.5575 21.3912C13.5449 21.4086 13.5332 21.4265 13.5225 21.445C13.478 21.5205 13.4495 21.6043 13.4387 21.6912C13.4387 21.6929 13.4387 21.6946 13.4387 21.6962L12.4075 26.3337C12.3903 26.2836 12.3783 26.2653 12.36 26.2062V26.205C12.0324 25.1525 10.5391 20.1703 10.3325 19.4812L21.5125 12.0275ZM14.49 22.8675L15.9125 23.935L13.8225 25.8725L14.49 22.8675Z" fill="white"/>
+                    </svg>
+                </a>
+            </div>
         `;
     }
 
@@ -273,8 +275,8 @@ class PhotoContainer extends AbstractComponent {
     render() {
         const photoMaxWidth = this._getContainerMaxHeight(); // считаем, что фото - квадрат, тогда макс ширина равна макс длинне
         this.place.innerHTML = `
-                <div id="photo" class="photo" style="width: ${photoMaxWidth}px"></div>
-                <div id="input" class="input"></div>
+            <div id="photo" class="photo" style="width: ${photoMaxWidth}px"></div>
+            <div id="input" class="input"></div>
         `;
         this.photoPlaceholder.setPlace(document.getElementById('photo'));
         this.fileInput.setPlace(document.getElementById('input'));
@@ -302,6 +304,7 @@ class FileInput extends AbstractComponent {
     }
 
     _fileInputChangeHandler = (evt) => {
+        eventBus.emit(PHOTO_CHANGE);
         const file = evt.target.files[0];
         if (!file.type.match('image.*')) {
             alert('wrong file type');
@@ -352,7 +355,7 @@ class FileInput extends AbstractComponent {
 class Photo extends AbstractComponent {
     constructor() {
         super();
-        this.facesData = [];
+        this.facesBound = new FacesBound();
     }
 
     setFileData(fileName, base64) {
@@ -367,15 +370,21 @@ class Photo extends AbstractComponent {
         }
 
         this.place.innerHTML = `
-            <canvas class="photo__canvas"></canvas>
+            <canvas id="canvas" class="photo__canvas"></canvas>
+            <div id="facesContainer" class="photo__facesContainer"></div>
         `;
 
-        this.canvas = document.querySelector('canvas');
+        this.facesBound.setPlace(document.getElementById('facesContainer'));
+        this.facesBound.setBase64Photo(this.base64);
+        this.facesBound.render();
+
+        this.canvas = document.getElementById('canvas');
         const context = this.canvas.getContext('2d');
         const image = new Image();
         image.src = this.base64;
         image.onload = () => {
             const imgSize = this._getImageSize(image.width, image.height);
+            this.facesBound.setPhotoSize(imgSize);
             this.canvas.height = imgSize.height;
             this.canvas.width = imgSize.width;
             context.drawImage(image,0, 0, imgSize.width, imgSize.height);
@@ -397,40 +406,11 @@ class Photo extends AbstractComponent {
             body: JSON.stringify({img: b64Text})
         }).then((res) => {
             res.json().then((data) => {
-                this.facesData = data.imgs;
-                this.detectFacesRequest();
-            });
-        }).catch(() => eventBus.emit(FETCH_ERROR));
-    }
+                this.facesBound.setFacesData(data.imgs);
+                this.facesBound.detectFacesRequest();
 
-    detectFacesRequest() {
-        if (!this.facesData) {
-            console.log('no find request');
-            eventBus.emit(FETCH_ERROR);
-            return;
-        }
-        if (this.facesData.length === 0) {
-            eventBus.emit(NO_FACES, {response: []});
-            console.log('no facesFound');
-            return;
-        }
-        fetch('http://127.0.0.1/api/v1/detect', {
-            method: "POST",
-            body: JSON.stringify({img: this.facesData[0]}) // TODO пока для одного лица
-        }).then((res) => {
-            res.json().then((data) => {
-                this.userIds = this._validateUserUrls(data.users);
-                eventBus.emit(USER_IDS_EVENT, this.userIds);
             });
-        }).catch(() => eventBus.emit(FETCH_ERROR));
-    }
-
-    _validateUserUrls(users) {
-        const idsArray = users.map((userUrl) => {
-            return userUrl.split('id')[1];
-        });
-        const idsStr = idsArray.reduce((resStr, id) => resStr + id + ',', '');
-        return idsStr.slice(0, idsStr.length - 1);
+        }).catch(() => eventBus.emit(SOME_ERROR));
     }
 
     _getImageSize(imageWidth, imageHeight) {
@@ -452,6 +432,170 @@ class Photo extends AbstractComponent {
     }
 
     hide() {
+        this.place.innerHTML = '';
+    }
+}
+
+class FacesBound extends AbstractComponent {
+    constructor() {
+        super();
+        this.faces = [];
+        this.tmpFaceNumber = -1;
+        this.base64 = '';
+        this.photoSize = '';
+        this.faceBounds = [];
+    }
+
+    setFacesData(data) {
+        this.faces = data;
+        this.tmpFaceNumber = 0;
+    }
+
+    setBase64Photo(b64) {
+        this.base64 = b64;
+    }
+
+    setPhotoSize(size) {
+        this.photoSize = size;
+    }
+
+    setFaceNumber(faceNumber) {
+        this.tmpFaceNumber = faceNumber;
+    }
+
+    detectFacesRequest() {
+        if (!this.faces) {
+            console.log('no find request');
+            eventBus.emit(SOME_ERROR);
+            return;
+        }
+        if (this.faces.length === 0) {
+            eventBus.emit(NO_FACES, {response: []});
+            console.log('no faces found');
+            return;
+        }
+        eventBus.emit(FACES_FOUND);
+        fetch('http://127.0.0.1/api/v1/detect', {
+            method: "POST",
+            body: JSON.stringify({img: this.faces[this.tmpFaceNumber]})
+        }).then((res) => {
+            res.json().then((data) => {
+                this.userIds = this._validateUserUrls(data.users);
+                eventBus.emit(USER_IDS_EVENT, this.userIds);
+            });
+        }).catch(() => eventBus.emit(SOME_ERROR));
+    }
+
+    _validateUserUrls(users) {
+        const idsArray = users.map((userUrl) => {
+            return userUrl.split('id')[1];
+        });
+        const idsStr = idsArray.reduce((resStr, id) => resStr + id + ',', '');
+        return idsStr.slice(0, idsStr.length - 1);
+    }
+
+    render() {
+        if (!this.faces || this.faces.length === 0) {
+            this._subscribeEvents();
+            return;
+        }
+
+        const htmlStr = this.faces.reduce((resultHtml, faceData, idx) => {
+            const borderSize = idx === this.tmpFaceNumber && 3; // это по сути ширина border
+            return resultHtml + `<div id="photoFace_${idx}" class="photo__face photo__face--${idx === this.tmpFaceNumber ? 'selected' : 'disabled'}" style="
+                                     left: ${+faceData.bound[0] - borderSize}px; 
+                                     top: ${+faceData.bound[2] - borderSize}px; 
+                                     width: ${+faceData.bound[1] - +faceData.bound[0] + 2 * borderSize}px; 
+                                     height: ${+faceData.bound[3] - +faceData.bound[2] + 2 * borderSize}px
+                                 ">
+                                     ${idx === this.tmpFaceNumber ? 
+                                         `<canvas id="faceCanvas" class="photo__faceCanvas" style="left: ${borderSize}px; top: ${borderSize}px"></canvas>`
+                                         : ''
+                                     }
+                                 </div>`;
+        }, '') ?? '';
+
+        this.place.innerHTML = htmlStr;
+
+        // для выбранного лица рамка не обычная: поверх канваса рисуется анимированный div чуть больших размеров,
+        // а поверх него дорисовывается лицо человека. Получается эффект, будто лицо выделено рамкой
+        const image = new Image();
+        image.src = this.base64;
+        const selectedFaceCanvasSize = {
+            dx: this.faces[this.tmpFaceNumber].bound[0],
+            dy: this.faces[this.tmpFaceNumber].bound[2],
+            dWidth: this.faces[this.tmpFaceNumber].bound[1] - this.faces[this.tmpFaceNumber].bound[0],
+            dHeight: this.faces[this.tmpFaceNumber].bound[3] - this.faces[this.tmpFaceNumber].bound[2],
+        };
+        image.onload = () => {
+            const canvas = document.getElementById('faceCanvas');
+            const context = canvas.getContext('2d');
+            canvas.height = selectedFaceCanvasSize.dHeight;
+            canvas.width = selectedFaceCanvasSize.dWidth;
+            const widthRatio = image.width / this.photoSize.width;
+            const heightRatio = image.height / this.photoSize.height;
+            const selectedFaceImageSize = {
+                sx: selectedFaceCanvasSize.dx * widthRatio,
+                sy: selectedFaceCanvasSize.dy * heightRatio,
+                sWidth: selectedFaceCanvasSize.dWidth * widthRatio,
+                sHeight: selectedFaceCanvasSize.dHeight * heightRatio,
+            };
+            context.drawImage(image, selectedFaceImageSize.sx, selectedFaceImageSize.sy, selectedFaceImageSize.sWidth,
+                selectedFaceImageSize.sHeight, 0, 0, selectedFaceCanvasSize.dWidth, selectedFaceCanvasSize.dHeight);
+
+            // чтобы не случалост ситуаций, когда фон рендерится первым и перекрывает фото
+            canvas.parentElement.className += ' photo__face--up';
+        };
+        this._addListeners();
+        this._subscribeEvents();
+    }
+
+    _rerender = () => {
+        this.hide();
+        this.render();
+    }
+
+    _hideBounds = () => {
+        this._removeListeners();
+        this.place.innerHTML = '';
+    }
+
+    _changeSelectedFace = (evt) => {
+        const faceNumber = evt.currentTarget.id.split('_').pop();
+        this.setFaceNumber(+faceNumber);
+        this.detectFacesRequest();
+        eventBus.emit(LIST_LOADING_STATE_CHANGE);
+    }
+
+    _subscribeEvents() {
+        eventBus.on(FACES_FOUND, this._rerender);
+        eventBus.on(PHOTO_CHANGE, this._hideBounds);
+    }
+
+    _unsubscribeEvents() {
+        eventBus.off(FACES_FOUND, this._rerender);
+        eventBus.off(PHOTO_CHANGE, this._hideBounds);
+    }
+
+    _addListeners() {
+        this.faceBounds = document.getElementsByClassName('photo__face--disabled');
+        for (const elem of this.faceBounds) {
+            elem.addEventListener('click', this._changeSelectedFace);
+        }
+    }
+
+    _removeListeners() {
+        if (this.faceBounds.length === 0) {
+            this.faceBounds = document.getElementsByClassName('photo__face--disabled') || [];
+        }
+        for (const elem of this.faceBounds) {
+            elem.removeEventListener('click', this._changeSelectedFace);
+        }
+    }
+
+    hide() {
+        this._unsubscribeEvents();
+        this._removeListeners();
         this.place.innerHTML = '';
     }
 }
