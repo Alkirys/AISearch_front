@@ -407,11 +407,11 @@ html, body {
     animation-iteration-count: infinite;
     animation-timing-function: linear;
     animation-delay: 0s;
-    z-index: -1;
+    visibility: hidden;
 }
 
 .photo__face--up {
-    z-index: 0;
+    visibility: visible;
 }
 
 @keyframes borderGradient {
@@ -494,7 +494,7 @@ html, body {
 }
 
 .list__name {
-    width: min-content;
+    max-width: calc(25vw - 80px);
     font-size: 24px;
     font-style: italic;
     font-weight: 300;
@@ -502,6 +502,8 @@ html, body {
     margin: 0;
     text-align: center;
     padding: 0 20px;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .notFaceFound {

@@ -4,13 +4,26 @@
 const PAGE_CHANGE_EVENT = 'PAGE_CHANGE_EVENT';
 const USER_IDS_EVENT = 'USER_IDS_EVENT';
 const LIST_LOADING_STATE_CHANGE_EVENT = 'LIST_LOADING_STATE_CHANGE_EVENT';
-const NO_FACES_EVENT = 'NO_FACES_EVENT';
 const SOME_ERROR_EVENT = 'SOME_ERROR_EVENT';
 const FACES_FOUND_EVENT = 'FACES_FOUND_EVENT';
 const PHOTO_CHANGE_EVENT ='PHOTO_CHANGE_EVENT';
+const RENDER_PHOTO_EVENT = 'RENDER_PHOTO_EVENT';
 
 const MAIN_PAGE = 'main';
 const ABOUT_PAGE = 'about';
+
+const MAX_FILE_SIZE = 5242880; // 5мб
+
+const SOME_ERROR = 'Кажется, что-то пошло не так... Попробуйте еще раз';
+const NO_FACES_ERROR = 'Не удалось разобрать лицо на фото :(';
+const FILE_TYPE_ERROR = 'Данный формат фото не поддерживается...';
+const FILE_SIZE_ERROR = `Размер файла не должен превышать ${MAX_FILE_SIZE / 1024 / 1024} мб`;
+
+const ApiUrls = {
+    find: () => 'http://127.0.0.1/api/v1/find',
+    detect: () => 'http://127.0.0.1/api/v1/detect',
+    getVkUsers: (userIds) => `https://api.vk.com/method/users.get?user_ids=${userIds}&fields=photo_100&access_token=${VK_access_token}&v=5.131&callback=app.mainPage.usersList.vkGetUsersCallback`,
+}
 
 class EventBus {
     constructor() {
@@ -83,9 +96,7 @@ class App {
     }
 
     _renderPage = (pageName) => {
-        console.log('_renderPage', pageName)
         if (pageName !== MAIN_PAGE && pageName !== ABOUT_PAGE) {
-            console.log('fuck...')
             return;
         }
         this.hide();
@@ -193,43 +204,48 @@ class UsersList extends AbstractComponent {
         super();
         this.place = '';
         this.isLoading = false;
-        this.error = false;
+        this.error = '';
     }
 
     vkGetUsersCallback(usersData) {
-        if (!usersData.response || !this) { // тк это коллбэк для запроса в вк он может сработать и без экхемпляра класса
-            eventBus.emit(SOME_ERROR_EVENT);
-        } else {
-            this.usersList = usersData.response.map((userData) => {
-                return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
-            });
-            eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
-        }
         const script = document.getElementById('vkApiScript');
         if (script) {
             script.outerHTML = '';
         }
+
+        if (!usersData.response) {
+            eventBus.emit(SOME_ERROR_EVENT, SOME_ERROR);
+            return;
+        }
+        this.usersList = usersData.response.map((userData) => {
+            return {id: userData.id, avatarUrl: userData.photo_100, name: userData.first_name + ' ' + userData.last_name};
+        });
+        eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
     }
 
     render() {
+        this._render(false);
+    }
+
+    _render(isRerender = false) {
+        if (!isRerender) {
+            this._subscribeEvents();
+        }
         if (!this.usersList && !this.isLoading && !this.error) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
                     <p class="notFaceFound__message">Загрузите фото...</p>
                 </div>
             `;
-            this._addListeners();
-            this._subscribeEvents();
             return;
         }
 
         if (this.error) {
             this.place.innerHTML = `
                 <div id="notFaceFound" class="notFaceFound">
-                    <p class="notFaceFound__message">Кажется, что-то пошло не так... Попробуйте еще раз</p>
+                    <p class="notFaceFound__message">${this.error}</p>
                 </div>
             `;
-            this._addListeners();
             return;
         }
 
@@ -241,17 +257,6 @@ class UsersList extends AbstractComponent {
                     </div>
                 </div>
             `;
-            this._addListeners();
-            return;
-        }
-
-        if (this.usersList.length === 0 && !this.isLoading) {
-            this.place.innerHTML = `
-                <div id="notFaceFound" class="notFaceFound">
-                    <p class="notFaceFound__message">Не удалось разобрать лицо на фото :(</p>
-                </div>
-            `;
-            this._addListeners();
             return;
         }
 
@@ -273,48 +278,41 @@ class UsersList extends AbstractComponent {
                 </div>
             </ul>
         `;
-
-        this._addListeners();
     }
 
     _rerenderLoading = () => {
-        this.error = false;
+        this.error = '';
         this.isLoading = !this.isLoading;
-        this._removeListeners();
-        this.render();
+        this._render(true);
     }
 
-    _rerenderError = () => {
-        this.error = true;
+    _rerenderError = (errorMessage) => {
+        this.error = errorMessage;
         this.isLoading = false;
-        this._removeListeners();
-        this.render();
+        this._render(true);
     }
 
     _subscribeEvents() {
         eventBus.on(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.on(LIST_LOADING_STATE_CHANGE_EVENT, this._rerenderLoading);
-        eventBus.on(NO_FACES_EVENT, this.vkGetUsersCallback);
         eventBus.on(SOME_ERROR_EVENT, this._rerenderError);
     }
 
     _unsubscribeEvents() {
         eventBus.off(USER_IDS_EVENT, this._fetchVKInfo);
         eventBus.off(LIST_LOADING_STATE_CHANGE_EVENT, this._rerenderLoading);
-        eventBus.off(NO_FACES_EVENT, this.vkGetUsersCallback);
         eventBus.off(SOME_ERROR_EVENT, this._rerenderError);
     }
 
-    _fetchVKInfo = (data) => {
+    _fetchVKInfo = (userIds) => {
         const script = document.createElement('script');
         script.id = 'vkApiScript';
-        script.src = `https://api.vk.com/method/users.get?user_ids=${data}&fields=photo_100&access_token=${VK_access_token}&v=5.131&callback=app.mainPage.usersList.vkGetUsersCallback`;
+        script.src = ApiUrls.getVkUsers(userIds);
         document.getElementsByTagName("head")[0].appendChild(script);
     }
 
     hide() {
         this._unsubscribeEvents();
-        this._removeListeners();
         this.place.innerHTML = '';
     }
 }
@@ -380,6 +378,7 @@ class PhotoContainer extends AbstractComponent {
     constructor() {
         super();
         this.photoPlaceholder = new PhotoPlaceholder();
+        this.photo = new Photo();
         this.fileInput = new FileInput();
     }
 
@@ -389,10 +388,34 @@ class PhotoContainer extends AbstractComponent {
             <div id="photo" class="photo" style="width: ${photoMaxWidth}px"></div>
             <div id="input" class="input"></div>
         `;
-        this.photoPlaceholder.setPlace(document.getElementById('photo'));
+
+        if (!this.photo.base64) {
+            this.photoPlaceholder.setPlace(document.getElementById('photo'));
+            this.photoPlaceholder.render();
+        } else {
+            this.photo.setPlace(document.getElementById('photo'));
+            this.photo.render();
+        }
+
         this.fileInput.setPlace(document.getElementById('input'));
-        this.photoPlaceholder.render();
         this.fileInput.render();
+
+        this._subscribeEvents();
+    }
+
+    _renderPhoto = ({file, b64}) => {
+        this.photoPlaceholder.hide();
+        this.photo.setPlace(document.getElementById('photo'));
+        this.photo.setFileData(file.fileName, b64);
+        this.photo.render();
+    }
+
+    _subscribeEvents() {
+        eventBus.on(RENDER_PHOTO_EVENT, this._renderPhoto);
+    }
+
+    _unsubscribeEvents() {
+        eventBus.off(RENDER_PHOTO_EVENT, this._renderPhoto);
     }
 
     _getContainerMaxHeight() {
@@ -403,6 +426,7 @@ class PhotoContainer extends AbstractComponent {
     }
 
     hide() {
+        this._unsubscribeEvents();
         this.place.innerHTML = '';
     }
 }
@@ -411,21 +435,23 @@ class FileInput extends AbstractComponent {
     constructor() {
         super();
         this.fileInput = '';
-        this.photo = new Photo();
     }
 
     _fileInputChangeHandler = (evt) => {
-        eventBus.emit(PHOTO_CHANGE_EVENT);
         const file = evt.target.files[0];
         if (!file.type.match('image.*')) {
-            alert('wrong file type');
+            eventBus.emit(SOME_ERROR_EVENT, FILE_TYPE_ERROR);
+            return;
         }
+        if (file.size > MAX_FILE_SIZE) {
+            eventBus.emit(SOME_ERROR_EVENT, FILE_SIZE_ERROR);
+            return;
+        }
+        eventBus.emit(PHOTO_CHANGE_EVENT);
         const fileReader = new FileReader();
         fileReader.onload = (function(file) {
             return (e) => {
-                this.photo.setPlace(document.getElementById('photo'));
-                this.photo.setFileData(file.fileName, e.target.result);
-                this.photo.render();
+                eventBus.emit(RENDER_PHOTO_EVENT, {file, b64: e.target.result});
             };
         }).bind(this)(file);
         fileReader.readAsDataURL(file);
@@ -467,6 +493,7 @@ class Photo extends AbstractComponent {
     constructor() {
         super();
         this.facesBound = new FacesBound();
+        this.isPhotoWasSaved = false; // чтобы при переходе в другую вкладку в хедере компонент знал, что фото уже было загружено
     }
 
     setFileData(fileName, base64) {
@@ -499,9 +526,14 @@ class Photo extends AbstractComponent {
             this.canvas.height = imgSize.height;
             this.canvas.width = imgSize.width;
             context.drawImage(image,0, 0, imgSize.width, imgSize.height);
-            eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
-            this.findFacesRequest();
+            if (!this.isPhotoWasSaved) {
+                eventBus.emit(LIST_LOADING_STATE_CHANGE_EVENT);
+                this.findFacesRequest();
+            }
+            this.isPhotoWasSaved = false;
         };
+
+        this._subscribeEvents();
     }
 
     findFacesRequest() {
@@ -512,7 +544,7 @@ class Photo extends AbstractComponent {
         let b64Text = this.canvas.toDataURL('image/jpeg');
         b64Text = b64Text.replace('data:image/jpeg;base64,','');
 
-        fetch('http://127.0.0.1/api/v1/find', {
+        fetch(ApiUrls.find(), {
             method: "POST",
             body: JSON.stringify({img: b64Text})
         }).then((res) => {
@@ -521,7 +553,7 @@ class Photo extends AbstractComponent {
                 this.facesBound.detectFacesRequest();
 
             });
-        }).catch(() => eventBus.emit(SOME_ERROR_EVENT));
+        }).catch(() => eventBus.emit(SOME_ERROR_EVENT, SOME_ERROR));
     }
 
     _getImageSize(imageWidth, imageHeight) {
@@ -542,7 +574,22 @@ class Photo extends AbstractComponent {
         return {width: realImageWidth, height: realImageHeight};
     }
 
+    _setPhotoWasSaved = (newPageName) => {
+        if (newPageName === ABOUT_PAGE) {
+            this.isPhotoWasSaved = true;
+        }
+    }
+
+    _subscribeEvents() {
+        eventBus.on(PAGE_CHANGE_EVENT, this._setPhotoWasSaved);
+    }
+
+    _unsubscribeEvents() {
+        eventBus.off(PAGE_CHANGE_EVENT, this._setPhotoWasSaved);
+    }
+
     hide() {
+        this._unsubscribeEvents();
         this.place.innerHTML = '';
     }
 }
@@ -577,16 +624,16 @@ class FacesBound extends AbstractComponent {
     detectFacesRequest() {
         if (!this.faces) {
             console.log('no find request');
-            eventBus.emit(SOME_ERROR_EVENT);
+            eventBus.emit(SOME_ERROR_EVENT, SOME_ERROR);
             return;
         }
         if (this.faces.length === 0) {
-            eventBus.emit(NO_FACES_EVENT, {response: []});
+            eventBus.emit(SOME_ERROR_EVENT, NO_FACES_ERROR);
             console.log('no faces found');
             return;
         }
         eventBus.emit(FACES_FOUND_EVENT);
-        fetch('http://127.0.0.1/api/v1/detect', {
+        fetch(ApiUrls.detect(), {
             method: "POST",
             body: JSON.stringify({img: this.faces[this.tmpFaceNumber]})
         }).then((res) => {
@@ -594,7 +641,7 @@ class FacesBound extends AbstractComponent {
                 this.userIds = this._validateUserUrls(data.users);
                 eventBus.emit(USER_IDS_EVENT, this.userIds);
             });
-        }).catch(() => eventBus.emit(SOME_ERROR_EVENT));
+        }).catch(() => eventBus.emit(SOME_ERROR_EVENT, SOME_ERROR));
     }
 
     _validateUserUrls(users) {
@@ -667,6 +714,7 @@ class FacesBound extends AbstractComponent {
     }
 
     _hideBounds = () => {
+        this.faces = [];
         this._removeListeners();
         this.place.innerHTML = '';
     }
@@ -746,6 +794,9 @@ let VK_access_token = '';
 fetch("config.json").then((res) => {
     return res.json().then((config) => {
         VK_access_token = config.VK_access_token;
+        if (!VK_access_token) {
+            console.log('invalid config file');
+        }
     }).catch(() => console.log('no config file'));
 });
 
